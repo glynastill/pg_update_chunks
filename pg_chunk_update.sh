@@ -9,8 +9,8 @@
 ## INSERT INTO test SELECT i, 'SOME TEXT ' || i FROM generate_series(1,1000000) i;
 
 psql_prefix="/usr/local/pgsql/bin"
-user="pgcontrol"
-database="SEE"
+user="glyn"
+database="TEST"
 schema="public"
 relation="test"
 fields="bx"                             # Comma separated
