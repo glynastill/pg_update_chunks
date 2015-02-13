@@ -9,15 +9,15 @@ Connects via dblink to perform individual transactions.
 Arguments
 ---------
 
-pg_chunk_update(
-	in_nspname              -- Schema containing the table
-	in_relname              -- Table name
-	in_fields               -- The field names to update comma separated *
-	in_values               -- The values for the corresponding field names *
-	in_where_clause         -- Any where clause for the update *
-	in_chunks               -- Break the update into this many chunks
-	in_conninfo             -- database conninfo to pass to dblink
-)
+	pg_chunk_update(
+		in_nspname		-- Schema containing the table
+		in_relname		-- Table name
+		in_fields		-- The field names to update comma separated *
+		in_values		-- The values for the corresponding field names *
+		in_where_clause		-- Any where clause for the update *
+		in_chunks		-- Break the update into this many chunks
+		in_conninfo		-- database conninfo to pass to dblink
+	)
 
 * Arguments for in_fields, in_values and in_where_clause are plain text and not 
 sanitized in any way, so ensure tight permissions to prevent sql injection.
