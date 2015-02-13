@@ -30,6 +30,7 @@ BEGIN
 	
 	PERFORM dblink_connect('chunk_updates', in_conninfo);
 
+	-- A lot of this could be switched out for format() in 9.1+
 	v_sql := 'SELECT count(*)/' || in_chunks || ' FROM ' || quote_ident(in_nspname) || '.' || quote_ident(in_relname) || 
 		' WHERE ((' || in_fields || ') IS NULL OR (' || in_fields || ') <> (' || in_values || '))' ||
 		COALESCE(' AND ' || regexp_replace(in_where_clause, E'WHERE\\y','AND', 'i'),'') || ';';
