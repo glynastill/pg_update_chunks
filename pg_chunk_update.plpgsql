@@ -1,0 +1,95 @@
+-- 
+-- Glyn Astill 25/02/2012
+-- Function to break up large / full table updates using dblink and 
+-- intermediate vacuums.
+--
+
+SET search_path=public;	
+
+DROP FUNCTION IF EXISTS pg_chunk_update(in_nspname text, in_relname text, in_fields text, in_values text, in_where_clause text, in_chunks integer, in_conninfo text);
+CREATE OR REPLACE FUNCTION pg_chunk_update(in_nspname text, in_relname text, in_fields text, in_values text, in_where_clause text, in_chunks integer, in_conninfo text)
+RETURNS void AS
+$BODY$
+DECLARE
+	v_sql text;
+	v_update_status text;
+	v_vacuum_status text;
+	v_chunk_size bigint;
+	v_debug boolean := FALSE;
+	v_start_timestamp timestamp;
+	v_last_timestamp timestamp;
+BEGIN
+	IF EXISTS (SELECT * FROM dblink_get_connections() WHERE ARRAY['chunk_updates'] <@ dblink_get_connections) THEN
+		IF (dblink_is_busy('chunk_updates') = 0)  THEN
+			RAISE NOTICE '%: Closing non-busy dblink connection', clock_timestamp();
+			PERFORM dblink_disconnect('chunk_updates');	
+		ELSE
+			RAISE EXCEPTION '%: Found busy dblink connection', clock_timestamp();
+		END IF;
+	END IF;
+	
+	PERFORM dblink_connect('chunk_updates', in_conninfo);
+
+	v_sql := 'SELECT count(*)/' || in_chunks || ' FROM ' || quote_ident(in_nspname) || '.' || quote_ident(in_relname) || 
+		' WHERE ((' || in_fields || ') IS NULL OR (' || in_fields || ') <> (' || in_values || '))' ||
+		COALESCE(' AND ' || regexp_replace(in_where_clause, E'WHERE\\y','AND', 'i'),'') || ';';
+	SELECT INTO v_chunk_size cs FROM dblink('chunk_updates', v_sql) AS result (cs bigint);
+	
+	IF (v_chunk_size > 0) THEN
+
+		v_start_timestamp := clock_timestamp();
+		RAISE NOTICE '%: Starting update; chunks = % chunk_size = %', v_start_timestamp, in_chunks, v_chunk_size;
+		RAISE NOTICE E'Equiv\' full SQL: \n\tUPDATE %.% SET (%)=(%) WHERE %;',
+			quote_ident(in_nspname), quote_ident(in_relname),in_fields,in_values,
+			COALESCE(regexp_replace(in_where_clause, E'WHERE\\y','AND', 'i'),'');
+	
+		FOR chunk IN 1..(in_chunks+1) LOOP
+			
+			v_sql := 'UPDATE ' || quote_ident(in_nspname) || '.' || quote_ident(in_relname) || ' a ' ||
+				' SET (' || in_fields || ')=(' || in_values || ')';
+			IF (chunk <= in_chunks) THEN
+				RAISE NOTICE E'%: Updating chunk % of % (elapsed time: %s est\' remainig time: %s)', clock_timestamp(), chunk, in_chunks, 
+					extract('epoch' from (clock_timestamp()-v_start_timestamp)), 
+					COALESCE((extract('epoch' from (clock_timestamp()-v_last_timestamp))*(in_chunks+1-chunk))::text,'?');
+			
+				v_sql :=  v_sql || ' FROM (SELECT ctid FROM ' || quote_ident(in_nspname) || '.' || quote_ident(in_relname) || 
+					' WHERE ((' || in_fields || ') IS NULL OR (' || in_fields || ') <> (' || in_values || '))' ||
+					COALESCE(' AND ' || regexp_replace(in_where_clause, E'WHERE\\y','AND', 'i'),'') ||
+					' ORDER BY ctid LIMIT ' || v_chunk_size || ' ) b WHERE a.ctid = b.ctid AND';
+			ELSE
+				RAISE NOTICE E'%: Final update pass (elapsed time: %s est\' remainig time: %s)', clock_timestamp(), 
+					extract('epoch' from (clock_timestamp()-v_start_timestamp)), 
+					COALESCE((extract('epoch' from (clock_timestamp()-v_last_timestamp))*(in_chunks+1-chunk))::text,'?');
+				v_sql :=  v_sql || ' WHERE';
+			END IF;
+		
+			v_sql :=  v_sql || ' ((' || in_fields || ') IS NULL OR (' || in_fields || ') <> (' || in_values || '))' ||
+				COALESCE(' AND ' || regexp_replace(in_where_clause, E'WHERE\\y','AND', 'i'),'') || ';';
+		
+			IF (v_debug) THEN
+				RAISE NOTICE '%: SQL : %', clock_timestamp(), v_sql;                
+			END IF;
+
+			v_last_timestamp := clock_timestamp();
+			v_update_status := dblink_exec('chunk_updates', v_sql);	
+			v_update_status := v_update_status || ' ' || dblink_error_message('chunk_updates');
+		
+			v_sql := 'VACUUM ' || quote_ident(in_nspname) || '.' || quote_ident(in_relname) || ';';
+		
+			IF (v_debug) THEN
+				RAISE NOTICE '%: SQL : %', clock_timestamp(), v_sql;
+			END IF;
+		
+			v_vacuum_status := dblink_exec('chunk_updates', v_sql);	
+			v_vacuum_status := v_vacuum_status || ' ' || dblink_error_message('chunk_updates');
+			
+			RAISE NOTICE '%: Chunk % status : % / %', clock_timestamp(), chunk, v_update_status, v_vacuum_status;			
+		END LOOP;
+	ELSE 
+		RAISE NOTICE '%: Nothing to do!', clock_timestamp();
+	END IF;
+	
+	PERFORM dblink_disconnect('chunk_updates');		
+END;
+$BODY$
+LANGUAGE plpgsql VOLATILE;

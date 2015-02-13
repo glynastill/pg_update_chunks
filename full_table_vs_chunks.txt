@@ -1,0 +1,71 @@
+Before:
+
+SEE=# \dt+ emailad
+                       List of relations
+  Schema   |  Name   | Type  |   Owner   |  Size  | Description
+-----------+---------+-------+-----------+--------+-------------
+ customers | emailad | table | pgcontrol | 436 MB |
+(1 row)
+
+SEE=# \di+ emailad*
+                                        List of relations
+  Schema   |              Name              | Type  |   Owner   |  Table  |  Size  | Description
+-----------+--------------------------------+-------+-----------+---------+--------+-------------
+ customers | emailad_index00                | index | pgcontrol | emailad | 72 MB  |
+ customers | emailad_index01                | index | pgcontrol | emailad | 144 MB |
+ customers | emailad_index02                | index | pgcontrol | emailad | 129 MB |
+ customers | emailad_index03                | index | pgcontrol | emailad | 101 MB |
+ customers | emailad_index04                | index | pgcontrol | emailad | 101 MB |
+ customers | emailad_index05                | index | pgcontrol | emailad | 101 MB |
+ customers | emailad_index06                | index | pgcontrol | emailad | 129 MB |
+ customers | emailad_index_auto_past_booker | index | pgcontrol | emailad | 144 MB |
+ customers | emailad_lower_address          | index | pgcontrol | emailad | 144 MB |
+(9 rows)
+
+Full update:
+
+SEE=# \dt+ emailad;
+                       List of relations
+  Schema   |  Name   | Type  |   Owner   |  Size  | Description
+-----------+---------+-------+-----------+--------+-------------
+ customers | emailad | table | pgcontrol | 871 MB |
+(1 row)
+
+SEE=# \di+ emailad*
+                                        List of relations
+  Schema   |              Name              | Type  |   Owner   |  Table  |  Size  | Description
+-----------+--------------------------------+-------+-----------+---------+--------+-------------
+ customers | emailad_index00                | index | pgcontrol | emailad | 167 MB |
+ customers | emailad_index01                | index | pgcontrol | emailad | 289 MB |
+ customers | emailad_index02                | index | pgcontrol | emailad | 328 MB |
+ customers | emailad_index03                | index | pgcontrol | emailad | 249 MB |
+ customers | emailad_index04                | index | pgcontrol | emailad | 235 MB |
+ customers | emailad_index05                | index | pgcontrol | emailad | 233 MB |
+ customers | emailad_index06                | index | pgcontrol | emailad | 308 MB |
+ customers | emailad_index_auto_past_booker | index | pgcontrol | emailad | 289 MB |
+ customers | emailad_lower_address          | index | pgcontrol | emailad | 290 MB |
+(9 rows)
+
+1000 updates with vacuums (will have to be reindexed but otherwise much better):
+
+SEE=# \dt+ emailad*
+                       List of relations
+  Schema   |  Name   | Type  |   Owner   |  Size  | Description
+-----------+---------+-------+-----------+--------+-------------
+ customers | emailad | table | pgcontrol | 441 MB |
+(1 row)
+
+SEE=# \di+ emailad*
+                                        List of relations
+  Schema   |              Name              | Type  |   Owner   |  Table  |  Size  | Description
+-----------+--------------------------------+-------+-----------+---------+--------+-------------
+ customers | emailad_index00                | index | pgcontrol | emailad | 162 MB |
+ customers | emailad_index01                | index | pgcontrol | emailad | 144 MB |
+ customers | emailad_index02                | index | pgcontrol | emailad | 267 MB |
+ customers | emailad_index03                | index | pgcontrol | emailad | 225 MB |
+ customers | emailad_index04                | index | pgcontrol | emailad | 227 MB |
+ customers | emailad_index05                | index | pgcontrol | emailad | 226 MB |
+ customers | emailad_index06                | index | pgcontrol | emailad | 250 MB |
+ customers | emailad_index_auto_past_booker | index | pgcontrol | emailad | 144 MB |
+ customers | emailad_lower_address          | index | pgcontrol | emailad | 144 MB |
+(9 rows)
